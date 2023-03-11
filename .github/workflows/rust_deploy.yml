@@ -1,0 +1,63 @@
+name: Rust Deploy
+permissions:
+  id-token: write
+  contents: write
+  packages: write
+  pull-requests: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+on:
+  push:
+    branches: [ "master" ]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  deploy-server:
+    runs-on: ubuntu-latest
+    steps:
+
+      # Install Dependencies
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: "Git Version"
+        id: "version"
+        uses: "codacy/git-version@2.4.0"
+      - name: Install podman and cross
+        run: |
+          sudo apt install -y podman
+          cargo install cross
+
+      # Build
+      - name: "Build x86_64-pc-windows-gnu"
+        run: |
+          cross clean
+          cross build --target x86_64-pc-windows-gnu -r
+          strip -s target/x86_64-pc-windows-gnu/release/xtimer.exe
+      - name: "Compress x86_64-pc-windows-gnu"
+        uses: "vimtor/action-zip@v1.1"
+        with:
+          files: "target/x86_64-pc-windows-gnu/release/xtimer.exe"
+          dest: "xtimer-v${{ steps.version.outputs.version }}-x86_64-pc-windows-gnu.zip"
+      - name: "Build x86_64-unknown-linux-gnu"
+        run: |
+          cross clean
+          cross build --target x86_64-unknown-linux-gnu -r
+          strip -s target/x86_64-unknown-linux-gnu/release/xtimer
+      - name: "Compress x86_64-unknown-linux-gnu"
+        uses: "vimtor/action-zip@v1.1"
+        with:
+          files: "target/x86_64-unknown-linux-gnu/release/xtimer"
+          dest: "xtimer-v${{ steps.version.outputs.version }}-x86_64-unknown-linux-gnu.zip"
+
+      # Create Release
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "${{ steps.version.outputs.version }}"
+          prerelease: false
+          title: "${{ steps.version.outputs.version }}"
+          files: |
+            *.zip
