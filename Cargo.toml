@@ -1,11 +1,11 @@
 [package]
 name = "xtimer"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 license = "MIT"
 
 [dependencies]
 structopt = "0.3.26"
-anyhow = "1.0.75"
+anyhow = "1.0.81"
 humantime = "2.1.0"
 self_update = { version = "0.39.0", default-features = false, features = ["archive-zip", "compression-zip-deflate", "compression-zip-bzip2", "rustls"] }
