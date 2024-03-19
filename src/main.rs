@@ -1,28 +1,28 @@
+use clap::{Parser, Subcommand};
 use humantime::{format_duration, parse_duration};
 use self_update::cargo_crate_version;
 use std::thread;
 use std::time::Duration;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(Parser, Debug)]
+#[command(
     name = "xtimer",
     about = "A simple timer utility",
     author = "Developer X"
 )]
-struct Opt {
+struct Cli {
     /// Debug mode
-    #[structopt(short)]
+    #[arg(short)]
     debug: bool,
     /// Don't show messages
-    #[structopt(short, long)]
+    #[arg(short, long)]
     quiet: bool,
-    #[structopt(subcommand)]
-    command: Command,
+    #[command(subcommand)]
+    command: Commands,
 }
 
-#[derive(StructOpt, Debug)]
-enum Command {
+#[derive(Subcommand, Debug)]
+enum Commands {
     /// Update the application
     Update,
     /// Set timer for a specified time
@@ -30,18 +30,18 @@ enum Command {
         /// Amount of time
         time: String,
         /// Show time remaining
-        #[structopt(short, long)]
+        #[arg(short, long)]
         show_time_remaining: bool,
     },
 }
 
 fn main() -> Result<(), anyhow::Error> {
-    let opt = Opt::from_args();
-    if opt.debug {
-        println!("{opt:#?}");
+    let cli = Cli::parse();
+    if cli.debug {
+        println!("{cli:#?}");
     }
-    match opt.command {
-        Command::Update => {
+    match cli.command {
+        Commands::Update => {
             let target = self_update::get_target();
             let status = self_update::backends::github::Update::configure()
                 .repo_owner("developerx-official")
@@ -56,12 +56,12 @@ fn main() -> Result<(), anyhow::Error> {
             thread::sleep(Duration::from_secs(2));
             return Ok(());
         }
-        Command::Set {
+        Commands::Set {
             time,
             show_time_remaining,
         } => {
             let duration = parse_duration(time.as_str())?;
-            if !show_time_remaining || opt.quiet {
+            if !show_time_remaining || cli.quiet {
                 thread::sleep(duration);
             } else {
                 let mut seconds = duration.as_secs_f32();
@@ -73,7 +73,7 @@ fn main() -> Result<(), anyhow::Error> {
                     println!("Time remaining: {}", format_duration(remaining));
                 }
             }
-            if !opt.quiet {
+            if !cli.quiet {
                 println!("Time elapsed.");
             }
         }
